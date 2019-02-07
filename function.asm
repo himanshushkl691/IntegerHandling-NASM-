@@ -83,6 +83,7 @@ sprintfLF:
 ;string in ESI
 ;integer in EAX
 atoi:
+	push esi
 	xor ebx,ebx	
 	.loop:
 		cmp byte[esi],0ah
@@ -95,40 +96,90 @@ atoi:
 		jmp .loop
 	.exit:
 		mov eax,ebx
+		pop esi
 		ret
 
-;integer to string
-;integer in EAX
-iprintf:
-	push edx
-	push ecx
-	push ebx
-	push eax	
+;convert to signed or unsigned
+;esi contains string
+atosigned:
 	push esi
-	sub ecx,ecx
-	sub esi,esi
-	count_digit:
+	cmp byte[esi],45
+	je sign
+	unsign:
+		call atoi
+		jmp exit_u
+	sign:
+		inc esi
+		call atoi
+		not eax
+		inc eax			;two's complement
+		jmp exit_u
+	exit_u:
+		pop esi
+		ret
+
+;print integer
+;n in eax
+iprintf:
+	push eax
+	push ecx
+	push edx
+	push edi
+
+	xor ecx,ecx
+	cmp eax,0
+	jne put_sign
+	push eax
+	mov eax,48
+	push eax
+	mov eax,esp
+	call sprintf
+	pop eax
+	pop eax
+	jmp break_print_digit
+	
+	put_sign:
+	push eax
+	shr eax,31
+	and eax,1
+	cmp eax,1
+	pop eax
+	jne .digit_loop
+	push eax
+	mov eax,45
+	push eax
+	mov eax,esp
+	call sprintf
+	pop eax
+	pop eax
+	not eax
+	inc eax
+
+	.digit_loop:
+		cmp eax,0
+		je .print_digit
 		inc ecx
-		mov edx, 0
-		mov esi, 10
-		idiv esi
-		add edx, 48
+		xor edi,edi
+		xor edx,edx
+		mov edi,10
+		idiv edi
+		add edx,48
 		push edx
-		cmp eax, 0
-		jnz count_digit
-	print_digit:
+		jmp .digit_loop
+	.print_digit:
+		cmp ecx,0
+		je break_print_digit
 		dec ecx
 		mov eax,esp
 		call sprintf
+		pop edx
+		jmp .print_digit
+	break_print_digit:
+		pop edi
+		pop edx
+		pop ecx
 		pop eax
-		cmp ecx,0
-		jnz print_digit
-	pop esi
-	pop eax
-	pop ebx
-	pop ecx
-	pop edx
-	ret
+		ret
 
 
 ;maximum of two
